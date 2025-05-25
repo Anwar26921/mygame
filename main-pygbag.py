@@ -1,11 +1,10 @@
 import pygame
 import random
-import os
 
 pygame.init()
 
-# Set fullscreen mode and get screen size
-screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+# Use fixed screen size (fullscreen causes issues in Pygbag)
+screen = pygame.display.set_mode((640, 480))
 WIDTH, HEIGHT = screen.get_size()
 
 pygame.display.set_caption("LayerEdge Token Dash")
@@ -22,14 +21,17 @@ big_font = pygame.font.SysFont(None, 72)
 # Load assets
 try:
     logo = pygame.image.load("layeredge_logo.jpg")
-    logo = pygame.transform.scale(logo, (60, 60))  # Keep player size consistent
+    logo = pygame.transform.scale(logo, (60, 60))
 except:
     logo = None
 
-try:
-    pickup_sound = pygame.mixer.Sound("coin_pickup.ogg")
-except:
-    pickup_sound = None
+# Disable sound for browser
+pickup_sound = None
+# try:
+#     pygame.mixer.init()
+#     pickup_sound = pygame.mixer.Sound("coin_pickup.ogg")
+# except:
+#     pickup_sound = None
 
 clock = pygame.time.Clock()
 
@@ -49,15 +51,17 @@ def intro_screen():
             scaled_logo = pygame.transform.rotozoom(logo, 0, scale_pulse)
             rect = scaled_logo.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
             screen.blit(scaled_logo, rect)
+
         draw_text("LayerEdge Token Dash", big_font, WHITE, WIDTH // 2 - 250, HEIGHT // 2 + 100)
         draw_text("Tap anywhere to start", font, WHITE, WIDTH // 2 - 160, HEIGHT // 2 + 160)
 
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                running_intro = False
+            if hasattr(event, "type"):
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    running_intro = False
 
         pygame.display.flip()
         clock.tick(60)
@@ -71,24 +75,25 @@ def pause_screen():
         pygame.display.flip()
 
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                paused = False
+            if hasattr(event, "type"):
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    paused = False
+
         clock.tick(15)
 
 def main_game():
-    # Start player centered horizontally near bottom
     player = pygame.Rect(WIDTH // 2 - 30, HEIGHT - 80, 60, 60)
     player_speed = 10
     has_shield = True
     move_left = False
     move_right = False
 
-    # Generate obstacles and tokens centered horizontally area only
     def random_x_obstacle():
         return random.randint(WIDTH // 4, WIDTH * 3 // 4 - 60)
+
     def random_x_token():
         return random.randint(WIDTH // 4, WIDTH * 3 // 4 - 30)
 
@@ -112,34 +117,32 @@ def main_game():
         frame_count += 1
 
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                x, y = pygame.mouse.get_pos()
-                if x < WIDTH // 2:
-                    move_left = True
-                else:
-                    move_right = True
-            elif event.type == pygame.MOUSEBUTTONUP:
-                move_left = False
-                move_right = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_p:
-                    pause_screen()
+            if hasattr(event, "type"):
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    x, y = pygame.mouse.get_pos()
+                    if x < WIDTH // 2:
+                        move_left = True
+                    else:
+                        move_right = True
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    move_left = False
+                    move_right = False
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_p:
+                        pause_screen()
 
-        # Player movement bounded horizontally inside center half screen
         if move_left and player.x > WIDTH // 4:
             player.x -= player_speed
         if move_right and player.x < WIDTH * 3 // 4 - player.width:
             player.x += player_speed
 
-        # Draw player
         if logo:
             screen.blit(logo, (player.x, player.y))
         else:
             pygame.draw.rect(screen, (0, 150, 255), player)
 
-        # Move and draw obstacles
         for obs in obstacles:
             obs.y += 5
             pygame.draw.rect(screen, WHITE, obs)
@@ -155,7 +158,6 @@ def main_game():
                 obs.x = random_x_obstacle()
                 score += 1
 
-        # Move and draw tokens
         for token in tokens:
             token.y += 3
             pulse = 5 * (1 + abs((frame_count // 5) % 10 - 5))
@@ -168,11 +170,9 @@ def main_game():
                 tokens_collected += 1
                 has_shield = True
 
-        # Shield indicator
         if has_shield:
             pygame.draw.circle(screen, SHIELD_COLOR, (player.centerx, player.centery), 40, 2)
 
-        # UI
         draw_text(f"Score: {score}", font, WHITE, 10, 10)
         draw_text(f"EDGEN: {tokens_collected}", font, TOKEN_COLOR, 10, 40)
         if has_shield:
@@ -186,9 +186,9 @@ def main_game():
         if remaining_time <= 0:
             running = False
 
-    # Save leaderboard
-    with open("leaderboard.txt", "a") as f:
-        f.write(f"Score: {score} | EDGEN: {tokens_collected}\n")
+    # Removed file writing for web
+    # with open("leaderboard.txt", "a") as f:
+    #     f.write(f"Score: {score} | EDGEN: {tokens_collected}\n")
 
     return score, tokens_collected
 
@@ -202,11 +202,12 @@ def game_over_screen(score, tokens):
         draw_text("Tap anywhere to play again", font, WHITE, WIDTH // 2 - 150, HEIGHT // 2 + 100)
 
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                running_over = False
+            if hasattr(event, "type"):
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    running_over = False
 
         pygame.display.flip()
         clock.tick(30)
